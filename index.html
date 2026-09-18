@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="theme-color" content="#008069" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Lovebot WhatsApp Messenger</title>
   <style>
     * {
@@ -132,21 +135,21 @@
 
     /* Notification Banner */
     .notif-banner {
-      background-color: #fff3cd;
-      color: #856404;
+      background-color: #e8f5e9;
+      color: #1b5e20;
       padding: 9px 14px;
       font-size: 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid #ffeeba;
+      border-bottom: 1px solid #c8e6c9;
     }
 
     .notif-banner button {
       background: #008069;
       color: #fff;
       border: none;
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 4px;
       font-weight: 600;
       font-size: 11px;
@@ -255,7 +258,7 @@
       background: #ffffff;
       border: 1px solid #d1d7db;
       border-radius: 16px;
-      padding: 5px 11px;
+      padding: 6px 12px;
       font-size: 12px;
       color: #54656f;
       cursor: pointer;
@@ -337,9 +340,9 @@
       <div id="syncTime">Ready</div>
     </div>
 
-    <!-- Notification Banner -->
+    <!-- Mobile / Desktop Notification Banner -->
     <div id="notifBanner" class="notif-banner">
-      <span>🔔 Turn on desktop alerts to get sound &amp; popup when Lovebot speaks!</span>
+      <span>🔔 Enable Mobile & Desktop Notifications for Lovebot sound & alerts!</span>
       <button id="allowNotifBtn">Enable</button>
     </div>
 
@@ -372,7 +375,7 @@
 
   <script>
     // ========================================================
-    // Firebase Realtime DB URL
+    // 1. Firebase Configuration
     // ========================================================
     const FIREBASE_BASE_URL = "https://lovebot-290bc-default-rtdb.firebaseio.com";
 
@@ -387,8 +390,44 @@
 
     let knownMessageIds = new Set();
     let isInitialLoad = true;
+    let swRegistration = null;
+    let audioContextUnlocked = false;
 
-    // Web Audio WhatsApp Notification Chime
+    // ========================================================
+    // 2. Register Inline Service Worker for Mobile Chrome
+    // ========================================================
+    async function initServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        try {
+          // Creates an inline Service Worker using Blob
+          const swCode = `
+            self.addEventListener('notificationclick', function(event) {
+              event.notification.close();
+              event.waitUntil(
+                clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+                  for (var i = 0; i < clientList.length; i++) {
+                    var client = clientList[i];
+                    if ('focus' in client) return client.focus();
+                  }
+                  if (clients.openWindow) return clients.openWindow('/');
+                })
+              );
+            });
+          `;
+          const blob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(blob);
+          
+          swRegistration = await navigator.serviceWorker.register(swUrl);
+          console.log("Service Worker registered successfully for Mobile Chrome.");
+        } catch (err) {
+          console.warn("Service Worker setup warning:", err);
+        }
+      }
+    }
+
+    // ========================================================
+    // 3. Audio & Haptic Vibration (Mobile WhatsApp Style)
+    // ========================================================
     function playWhatsAppTone() {
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -399,7 +438,7 @@
         const gain1 = ctx.createGain();
         osc1.type = "sine";
         osc1.frequency.setValueAtTime(880, now);
-        gain1.gain.setValueAtTime(0.2, now);
+        gain1.gain.setValueAtTime(0.3, now);
         gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
         osc1.connect(gain1);
         gain1.connect(ctx.destination);
@@ -410,18 +449,33 @@
         const gain2 = ctx.createGain();
         osc2.type = "sine";
         osc2.frequency.setValueAtTime(1318.5, now + 0.08);
-        gain2.gain.setValueAtTime(0.25, now + 0.08);
+        gain2.gain.setValueAtTime(0.35, now + 0.08);
         gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
         osc2.connect(gain2);
         gain2.connect(ctx.destination);
         osc2.start(now + 0.08);
         osc2.stop(now + 0.35);
       } catch (e) {
-        // Handled after first user gesture
+        // Handled after touch unlock
+      }
+
+      // Mobile Vibration Pattern (Dual buzz like native WhatsApp)
+      if ("vibrate" in navigator) {
+        navigator.vibrate([200, 100, 200]);
       }
     }
 
-    // Notification Permission
+    // Unlock Mobile Web Audio on first user interaction
+    document.addEventListener("touchstart", function unlockAudio() {
+      if (!audioContextUnlocked) {
+        playWhatsAppTone();
+        audioContextUnlocked = true;
+      }
+    }, { once: true });
+
+    // ========================================================
+    // 4. Unified Mobile & Desktop Notification Controller
+    // ========================================================
     function updateNotifBanner() {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         notifBanner.style.display = "none";
@@ -430,31 +484,52 @@
       }
     }
 
-    allowNotifBtn.addEventListener("click", () => {
+    allowNotifBtn.addEventListener("click", async () => {
       if (typeof Notification !== "undefined") {
-        Notification.requestPermission().then((perm) => {
-          updateNotifBanner();
-          if (perm === "granted") {
-            playWhatsAppTone();
-            new Notification("💌 Lovebot Notifications Enabled!", {
-              body: "You will receive desktop alerts when Lovebot speaks from hardware.",
-              icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>"
-            });
-          }
-        });
+        const perm = await Notification.requestPermission();
+        updateNotifBanner();
+        if (perm === "granted") {
+          playWhatsAppTone();
+          triggerNotification("💌 Lovebot Notifications Enabled!", "You will get instant WhatsApp-style alerts when Lovebot speaks!");
+        }
       }
     });
 
-    function showDesktopNotification(text) {
+    async function triggerNotification(title, bodyText) {
       playWhatsAppTone();
+
       if (document.hidden) {
         document.title = "(1) 💌 Lovebot spoke!";
       }
+
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        new Notification("💌 Lovebot (Voice Note):", {
-          body: text,
-          icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>"
-        });
+        const iconUrl = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>";
+        
+        const notifOptions = {
+          body: bodyText,
+          icon: iconUrl,
+          badge: iconUrl,
+          vibrate: [200, 100, 200],
+          tag: 'lovebot-msg',
+          renotify: true
+        };
+
+        // Use Service Worker Notification if available (Required for Android Mobile Chrome!)
+        if (swRegistration && swRegistration.showNotification) {
+          try {
+            await swRegistration.showNotification(title, notifOptions);
+            return;
+          } catch (e) {
+            console.warn("ServiceWorker notification fallback:", e);
+          }
+        }
+
+        // Standard Desktop Browser Notification fallback
+        try {
+          new Notification(title, notifOptions);
+        } catch (e) {
+          console.warn("Desktop notification fallback:", e);
+        }
       }
     }
 
@@ -464,6 +539,9 @@
       }
     });
 
+    // ========================================================
+    // 5. Chat UI Logic & Speech Synthesis
+    // ========================================================
     function formatTime(timestamp) {
       if (!timestamp) return "";
       const date = new Date(timestamp);
@@ -501,7 +579,7 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
 
       if (!isInitialLoad && sender === "lovebot") {
-        showDesktopNotification(text);
+        triggerNotification("💌 Lovebot (Voice Note):", text);
       }
     }
 
@@ -525,7 +603,7 @@
     };
 
     // ========================================================
-    // FIXED FIREBASE QUERY: orderBy="$key"&limitToLast=50
+    // 6. Realtime Firebase Polling Sync
     // ========================================================
     async function fetchMessages() {
       try {
@@ -553,7 +631,7 @@
           appendMessage(msg.id, msg.sender, msg.text, msg.timestamp);
         });
 
-        statusText.textContent = `🟢 Firebase Synced (${list.length} messages)`;
+        statusText.textContent = `🟢 Firebase Synced (${list.length} msgs)`;
         syncTime.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         isInitialLoad = false;
       } catch (err) {
@@ -563,7 +641,7 @@
     }
 
     // ========================================================
-    // Send Message to Firebase & ESP32 OLED
+    // 7. Send Message to Firebase & ESP32 OLED Screen
     // ========================================================
     async function sendMessage(text) {
       if (!text.trim()) return;
@@ -574,7 +652,7 @@
       appendMessage(tempId, "pappa", cleanText, Date.now());
 
       try {
-        // 1. Save to /messages.json (chat log)
+        // 1. Save to /messages.json (Chat history)
         await fetch(`${FIREBASE_BASE_URL}/messages.json`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -585,7 +663,7 @@
           })
         });
 
-        // 2. Put into /bot_inbox.json for ESP32 hardware to display on OLED
+        // 2. Push to /bot_inbox.json for ESP32 Hardware OLED display & Buzzer
         await fetch(`${FIREBASE_BASE_URL}/bot_inbox.json`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -597,7 +675,7 @@
           })
         });
       } catch (err) {
-        console.error("Firebase write failed:", err);
+        console.error("Firebase write error:", err);
       }
     }
 
@@ -610,7 +688,7 @@
       sendMessage(text);
     };
 
-    // Test button
+    // Test Voice button
     simBtn.addEventListener("click", async () => {
       const phrases = [
         "Appa, naan ungaloda Lovebot pesuren! Epdi irukeenga?",
@@ -632,7 +710,8 @@
       fetchMessages();
     });
 
-    // Start polling every 1.5 seconds
+    // Startup initialization
+    initServiceWorker();
     updateNotifBanner();
     fetchMessages();
     setInterval(fetchMessages, 1500);
