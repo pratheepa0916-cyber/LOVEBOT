@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lovebot WhatsApp Messenger</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #d1d7db;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 580px;
+      height: 100vh;
+      max-height: 860px;
+      background: #efeae2;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (max-width: 600px) {
+      .app-container {
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+      }
+    }
+
+    /* WhatsApp Header */
+    .chat-header {
+      background-color: #008069;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #005c4b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 2px solid rgba(255,255,255,0.25);
+    }
+
+    .user-details h3 {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .user-details span {
+      font-size: 11px;
+      color: #d1f2e6;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #25d366;
+      display: inline-block;
+    }
+
+    .header-actions button {
+      background: rgba(255,255,255,0.18);
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 18px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .header-actions button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Diagnostic status bar */
+    .status-bar {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    /* Notification Banner */
+    .notif-banner {
+      background-color: #fff3cd;
+      color: #856404;
+      padding: 9px 14px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #ffeeba;
+    }
+
+    .notif-banner button {
+      background: #008069;
+      color: #fff;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    /* Message Area */
+    .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      background-image: radial-gradient(#d6cec3 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+
+    .date-badge {
+      align-self: center;
+      background: #ffffffeb;
+      color: #54656f;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.08);
+      margin: 4px 0;
+      font-weight: 500;
+    }
+
+    .message-bubble {
+      max-width: 82%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      position: relative;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      word-wrap: break-word;
+    }
+
+    /* Lovebot Message (From Hardware) */
+    .lovebot-msg {
+      align-self: flex-start;
+      background: #ffffff;
+      color: #111b21;
+      border-top-left-radius: 0;
+    }
+
+    .msg-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: #008069;
+      margin-bottom: 2px;
+      display: block;
+      text-transform: uppercase;
+    }
+
+    /* Pappa Message (To Hardware) */
+    .pappa-msg {
+      align-self: flex-end;
+      background: #d9fdd3;
+      color: #111b21;
+      border-top-right-radius: 0;
+    }
+
+    .msg-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 10px;
+      color: #667781;
+    }
+
+    .listen-btn {
+      background: none;
+      border: none;
+      color: #008069;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: auto;
+      padding: 0;
+    }
+
+    .check-mark {
+      color: #53bdeb;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    /* Quick Reply Chips */
+    .quick-replies {
+      background: #f0f2f5;
+      padding: 8px 12px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      border-top: 1px solid #e9edef;
+      white-space: nowrap;
+    }
+
+    .quick-chip {
+      background: #ffffff;
+      border: 1px solid #d1d7db;
+      border-radius: 16px;
+      padding: 5px 11px;
+      font-size: 12px;
+      color: #54656f;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .quick-chip:hover {
+      background: #e9edef;
+      color: #111b21;
+    }
+
+    /* Input Footer */
+    .chat-input-bar {
+      background: #f0f2f5;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-top: 1px solid #e9edef;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #fff;
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .chat-input:focus {
+      border-color: #008069;
+    }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      background: #008069;
+      border: none;
+      border-radius: 50%;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      transition: background 0.2s;
+    }
+
+    .send-btn:hover {
+      background: #006a57;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="chat-header">
+      <div class="user-info">
+        <div class="avatar">🤖</div>
+        <div class="user-details">
+          <h3>Lovebot</h3>
+          <span><span class="status-dot"></span> Online • ESP32 Hardware</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="simBtn">Test Voice</button>
+      </div>
+    </header>
+
+    <!-- Live Status Bar -->
+    <div class="status-bar">
+      <div class="status-badge" id="statusBadge">
+        <span class="status-dot" style="background:#22c55e;"></span>
+        <span id="statusText">Connecting to Firebase...</span>
+      </div>
+      <div id="syncTime">Ready</div>
+    </div>
+
+    <!-- Notification Banner -->
+    <div id="notifBanner" class="notif-banner">
+      <span>🔔 Turn on desktop alerts to get sound &amp; popup when Lovebot speaks!</span>
+      <button id="allowNotifBtn">Enable</button>
+    </div>
+
+    <!-- Chat Message List -->
+    <div id="chatMessages" class="chat-messages">
+      <div class="date-badge">Realtime Firebase Chat Stream</div>
+    </div>
+
+    <!-- Quick Reply Suggestions -->
+    <div class="quick-replies">
+      <button class="quick-chip" onclick="quickReply('❤️ Love you pa!')">❤️ Love you pa!</button>
+      <button class="quick-chip" onclick="quickReply('🍛 Sapttiya? (Had food?)')">🍛 Sapttiya?</button>
+      <button class="quick-chip" onclick="quickReply('✨ Enna panra?')">✨ Enna panra?</button>
+      <button class="quick-chip" onclick="quickReply('📞 Call me')">📞 Call me</button>
+      <button class="quick-chip" onclick="quickReply('👍 Super pa!')">👍 Super pa!</button>
+    </div>
+
+    <!-- Message Input Bar -->
+    <form id="chatForm" class="chat-input-bar">
+      <input 
+        type="text" 
+        id="msgInput" 
+        class="chat-input" 
+        placeholder="Type a message to send to Lovebot screen..." 
+        autocomplete="off" 
+      />
+      <button type="submit" class="send-btn">➤</button>
+    </form>
+  </div>
+
+  <script>
+    // ========================================================
+    // Firebase Realtime DB URL
+    // ========================================================
+    const FIREBASE_BASE_URL = "https://lovebot-290bc-default-rtdb.firebaseio.com";
+
+    const chatContainer = document.getElementById("chatMessages");
+    const chatForm = document.getElementById("chatForm");
+    const msgInput = document.getElementById("msgInput");
+    const notifBanner = document.getElementById("notifBanner");
+    const allowNotifBtn = document.getElementById("allowNotifBtn");
+    const simBtn = document.getElementById("simBtn");
+    const statusText = document.getElementById("statusText");
+    const syncTime = document.getElementById("syncTime");
+
+    let knownMessageIds = new Set();
+    let isInitialLoad = true;
+
+    // Web Audio WhatsApp Notification Chime
+    function playWhatsAppTone() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        const now = ctx.currentTime;
+
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(880, now);
+        gain1.gain.setValueAtTime(0.2, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.18);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(1318.5, now + 0.08);
+        gain2.gain.setValueAtTime(0.25, now + 0.08);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.08);
+        osc2.stop(now + 0.35);
+      } catch (e) {
+        // Handled after first user gesture
+      }
+    }
+
+    // Notification Permission
+    function updateNotifBanner() {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        notifBanner.style.display = "none";
+      } else {
+        notifBanner.style.display = "flex";
+      }
+    }
+
+    allowNotifBtn.addEventListener("click", () => {
+      if (typeof Notification !== "undefined") {
+        Notification.requestPermission().then((perm) => {
+          updateNotifBanner();
+          if (perm === "granted") {
+            playWhatsAppTone();
+            new Notification("💌 Lovebot Notifications Enabled!", {
+              body: "You will receive desktop alerts when Lovebot speaks from hardware.",
+              icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>"
+            });
+          }
+        });
+      }
+    });
+
+    function showDesktopNotification(text) {
+      playWhatsAppTone();
+      if (document.hidden) {
+        document.title = "(1) 💌 Lovebot spoke!";
+      }
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        new Notification("💌 Lovebot (Voice Note):", {
+          body: text,
+          icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>"
+        });
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        document.title = "Lovebot WhatsApp Messenger";
+      }
+    });
+
+    function formatTime(timestamp) {
+      if (!timestamp) return "";
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function appendMessage(id, sender, text, timestamp) {
+      if (knownMessageIds.has(id)) return;
+      knownMessageIds.add(id);
+
+      const isPappa = sender === "pappa";
+      const bubble = document.createElement("div");
+      bubble.className = `message-bubble ${isPappa ? "pappa-msg" : "lovebot-msg"}`;
+
+      let listenBtnHtml = "";
+      let checkmarkHtml = "";
+
+      if (!isPappa) {
+        listenBtnHtml = `<button class="listen-btn" onclick="speakTanglish('${encodeURIComponent(text)}')">🔊 Listen</button>`;
+      } else {
+        checkmarkHtml = `<span class="check-mark">✓✓</span>`;
+      }
+
+      bubble.innerHTML = `
+        <span class="msg-tag">${isPappa ? "Pappa (Web)" : "Lovebot (Voice)"}</span>
+        <div>${escapeHtml(text)}</div>
+        <div class="msg-footer">
+          ${listenBtnHtml}
+          <span>${formatTime(timestamp)}</span>
+          ${checkmarkHtml}
+        </div>
+      `;
+
+      chatContainer.appendChild(bubble);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      if (!isInitialLoad && sender === "lovebot") {
+        showDesktopNotification(text);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    window.speakTanglish = function(encodedText) {
+      const text = decodeURIComponent(encodedText);
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang.includes("ta") || v.lang.includes("IN"));
+        if (preferred) utterance.voice = preferred;
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+
+    // ========================================================
+    // FIXED FIREBASE QUERY: orderBy="$key"&limitToLast=50
+    // ========================================================
+    async function fetchMessages() {
+      try {
+        const url = `${FIREBASE_BASE_URL}/messages.json?orderBy="$key"&limitToLast=50`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          statusText.textContent = `Firebase HTTP Error ${response.status}`;
+          return;
+        }
+
+        const data = await response.json();
+        if (!data || typeof data !== "object") return;
+
+        const list = Object.entries(data).map(([key, val]) => ({
+          id: key,
+          sender: val.sender || "lovebot",
+          text: val.text || "",
+          timestamp: typeof val.timestamp === "number" ? val.timestamp : Date.now()
+        }));
+
+        list.sort((a, b) => a.timestamp - b.timestamp);
+
+        list.forEach(msg => {
+          appendMessage(msg.id, msg.sender, msg.text, msg.timestamp);
+        });
+
+        statusText.textContent = `🟢 Firebase Synced (${list.length} messages)`;
+        syncTime.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        isInitialLoad = false;
+      } catch (err) {
+        console.warn("Sync error:", err);
+        statusText.textContent = "⚠️ Network Retry...";
+      }
+    }
+
+    // ========================================================
+    // Send Message to Firebase & ESP32 OLED
+    // ========================================================
+    async function sendMessage(text) {
+      if (!text.trim()) return;
+      const cleanText = text.trim();
+      msgInput.value = "";
+
+      const tempId = "local-" + Date.now();
+      appendMessage(tempId, "pappa", cleanText, Date.now());
+
+      try {
+        // 1. Save to /messages.json (chat log)
+        await fetch(`${FIREBASE_BASE_URL}/messages.json`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: cleanText,
+            sender: "pappa",
+            timestamp: Date.now()
+          })
+        });
+
+        // 2. Put into /bot_inbox.json for ESP32 hardware to display on OLED
+        await fetch(`${FIREBASE_BASE_URL}/bot_inbox.json`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: cleanText,
+            sender: "pappa",
+            timestamp: Date.now(),
+            read: false
+          })
+        });
+      } catch (err) {
+        console.error("Firebase write failed:", err);
+      }
+    }
+
+    chatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      sendMessage(msgInput.value);
+    });
+
+    window.quickReply = function(text) {
+      sendMessage(text);
+    };
+
+    // Test button
+    simBtn.addEventListener("click", async () => {
+      const phrases = [
+        "Appa, naan ungaloda Lovebot pesuren! Epdi irukeenga?",
+        "Pappa, sapteengala? Enna samaayal inniku?",
+        "Love you pappa! Hardware working super ah iruku!",
+        "Appa seekiram veetuku vaanga!"
+      ];
+      const randomMsg = phrases[Math.floor(Math.random() * phrases.length)];
+
+      await fetch(`${FIREBASE_BASE_URL}/messages.json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: randomMsg,
+          sender: "lovebot",
+          timestamp: Date.now()
+        })
+      });
+      fetchMessages();
+    });
+
+    // Start polling every 1.5 seconds
+    updateNotifBanner();
+    fetchMessages();
+    setInterval(fetchMessages, 1500);
+  </script>
+</body>
+</html>
